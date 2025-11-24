@@ -1,0 +1,128 @@
+# == General Purpose .gitignore Template ==
+
+# --- 1. Operating System and Editor Artifacts ---
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Linux
+*~
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+## Editors and IDEs (Integrated Development Environments)
+# Visual Studio Code (VS Code)
+.vscode/
+
+# Vim/NeoVim swap files
+*.swp
+*.swo
+
+# Atom
+.atom/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# IntelliJ/Webstorm/Android Studio
+.idea/
+*.iws
+*.iml
+*.ipr
+
+---
+
+# --- 2. Common Language/Ecosystem Artifacts ---
+
+## Node.js
+# Dependency directory
+/node_modules
+# Compiled code
+/dist
+/build
+/out
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+## Python
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+# Virtual environment
+/venv
+/env
+# Distribution / build files
+*.egg-info/
+.coverage
+
+## Java/Kotlin/Scala (Maven/Gradle/SBT)
+# Compiled class files
+/bin/
+/target/
+# Maven / Gradle caches
+.gradle/
+.project
+.classpath
+
+## Ruby/Rails
+# Bundler dependencies
+/vendor/bundle
+# Logs
+/log/*.log
+/tmp/
+
+## PHP (Composer)
+/vendor/
+
+---
+
+# --- 3. Build and Dependency Directories ---
+
+# General compiled/build output directories
+/build/
+/dist/
+/out/
+
+# Dependency directories
+/vendor/
+/dependencies/
+
+---
+
+# --- 4. Sensitive Information and Environment Files ---
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.secrets
+
+# Key files (if not managed by a secret manager)
+*.key
+*.pem
+
+---
+
+# --- 5. Database Artifacts ---
+
+# SQLite database files
+*.sqlite
+*.db
+*.sqlite3
+/db/*.sqlite3
