@@ -36,19 +36,62 @@ def get_channel_info(token: str):
 
     return user_id, is_live
 
-def get_latest_vod_info(user_id: str, token: str) -> dict | None:
-    """Retrieves the most recent VOD's ID, title, and creation time."""
+# Maximum number of VODs to fetch per API page
+VODS_PER_PAGE = 100 
+
+def get_all_new_vods(user_id: str, token: str, last_processed_id: str | None) -> list:
+    """
+    Retrieves all VODs for the user until the last_processed_id is found.
+    VODs are returned in chronological order (oldest first).
+    """
     headers = {'Client-ID': TWITCH_CLIENT_ID, 'Authorization': f'Bearer {token}'}
-    url = f"https://api.twitch.tv/helix/videos?user_id={user_id}&type=archive&first=1"
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    vods_to_process = []
+    cursor = None
     
-    if not response.json()['data']:
-        return None
+    while True:
+        url = f"https://api.twitch.tv/helix/videos?user_id={user_id}&type=archive&first={VODS_PER_PAGE}"
+        
+        if cursor:
+            url += f"&after={cursor}"
+            
+        print(f"Fetching VODs (Page {'first' if not cursor else cursor[:8]}...)")
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        page_vods = data.get('data', [])
+        
+        found_last_id = False
+        
+        for vod in page_vods:
+            if vod['id'] == last_processed_id:
+                # Stop processing and terminate the loop
+                found_last_id = True
+                break
+            
+            # Store the new VOD for processing
+            vods_to_process.append({
+                'id': vod['id'],
+                'title': vod['title'],
+                'created_at': vod['created_at'],
+            })
+            
+        if found_last_id:
+            break
+
+        # Check for pagination cursor
+        pagination = data.get('pagination', {})
+        cursor = pagination.get('cursor')
+        
+        # If no more pages and we haven't found the last ID, we stop
+        if not cursor:
+            break
+
+        # Safety measure to prevent hitting rate limits too fast
+        time.sleep(0.5) 
+
+    # Twitch returns newest VODs first; we reverse the list to process oldest first
+    # (Recommended, as it maintains order if a process fails mid-batch)
+    vods_to_process.reverse()
     
-    vod = response.json()['data'][0]
-    return {
-        'id': vod['id'],
-        'title': vod['title'],
-        'created_at': vod['created_at'],
-    }
+    return vods_to_process
