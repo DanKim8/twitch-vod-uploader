@@ -2,8 +2,7 @@ import subprocess
 import os
 import datetime
 import re
-import platform
-import sys
+import json
 
 STAGING_DIR = os.environ.get("STAGING_DIR", "/vods")
 
@@ -12,108 +11,82 @@ STAGING_DIR = os.environ.get("STAGING_DIR", "/vods")
 USE_INTEL_QSV = os.environ.get("USE_INTEL_QSV") # For Intel Arc
 USE_NVIDIA_NVENC = os.environ.get("USE_NVIDIA_NVENC") # For NVIDIA
 
-"""Creates the final, structured filename: [YYYY-MM-DD]_safe_title.mp4"""
-def generate_safe_filename(vod_info: dict, date_prefix: str) -> str:
+def get_vod_metadata(vod_id: str) -> dict:
+    """
+    Fetches the VOD metadata (including creation date and title) 
+    using 'twitch-dl info --json'.
+    """
+    # Command: twitch-dl info [VOD_ID] --json
+    info_command = ['twitch-dl', 'info', vod_id, '--json']
     
-    # Sanitize title by replacing unsafe characters with underscores
-    title = vod_info['title']
-    safe_title = re.sub(r'[^\w\-_\. ]', '_', title).replace(' ', '_')
+    print(f"Fetching metadata for VOD {vod_id}...")
     
-    return f"{date_prefix}_{safe_title}.mp4"
+    try:
+        # Execute the command and capture JSON output
+        result = subprocess.run(
+            info_command, 
+            check=True, 
+            capture_output=True, 
+            text=True
+        )
+        
+        # Parse the JSON output (twitch-dl info returns a list of VODs)
+        metadata_list = json.loads(result.stdout)
+        
+        if not metadata_list:
+            raise ValueError(f"Metadata not found for VOD ID {vod_id}.")
+            
+        return metadata_list[0]
+        
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError) as e:
+        print(f"FATAL ERROR: Could not fetch or parse metadata for VOD {vod_id}.")
+        print(f"Details: {e}")
+        # Re-raise the error to halt the script
+        raise
 
-def download_vod(vod_id: str, output_path: str):
+def download_vod(vod_id: str, raw_output_path: str):
 
-    # Command: twitch-dl download [VOD_ID] -q source -o [output_path]
+# --- STEP 1: RETRIEVE METADATA ---
+    metadata = get_vod_metadata(vod_id)
+
+# --- STEP 2: FORMAT DATE AND CLEAN TITLE ---
+    
+    # 2a. Format the Date (e.g., '2023-11-20')
+    # The 'created_at' is an ISO timestamp string (e.g., "2023-11-20T19:00:00Z")
+    created_date = metadata['created_at']
+    dt_object = datetime.fromisoformat(created_date.replace('Z', '+00:00'))
+    date_str = dt_object.strftime('%Y-%m-%d')
+    
+    # 2b. Clean the Title (essential for file paths)
+    title = metadata['title']
+    cleaned_title = re.sub(r'[^\w\s-]', '', title).strip()
+    cleaned_title = re.sub(r'\s+', '_', cleaned_title).lower()
+    
+    # Remove characters that are unsafe or illegal in file names (e.g., /, :, ?, <, >, ")
+    final_filename = f"{date_str}_{cleaned_title}.mp4"
+    
+    # Replace spaces with underscores and convert to lowercase for a clean filename
+    base_dir = os.path.dirname(raw_output_path)
+
+    # --- STEP 3: CONSTRUCT THE FINAL PATH ---
+    final_file_path = os.path.join(base_dir, final_filename)
+
+    print(f"VOD Title: '{title}'")
+    print(f"Target RAW file: {raw_output_path}")
+    print(f"Target FINAL name: {final_file_path}")
+
+    # --- STEP 4: EXECUTE DOWNLOAD ---
+    # The list of command arguments (assuming 1080p60 is the desired quality)
     command = [
         'twitch-dl', 'download', vod_id,
-        '-q', 'source',
-        '-o', output_path,
+        '-q', '1080p60',
+        '-o', raw_output_path,
     ]
     
+    print(f"Starting download of {metadata['channel']}'s VOD...")
     subprocess.run(command, check=True)
-    print(f"Download complete: {output_path}")
 
-def transcode_vod(input_path: str, output_path: str):
-    
-    """
-    Dynamically selects the best H.265 (HEVC) encoder based on the execution environment.
-    Prioritizes hardware acceleration, then falls back to efficient CPU encoding.
-    """
-    
-    system_os = platform.system()
-    command = ['ffmpeg']
-    
-    # --- HEVC Encoding Parameters ---
-    # Common settings for output quality
-    QUALITY_FACTOR = '20'       # General quality factor for QSV/NVENC
-    CRF_QUALITY = '23'          # CRF for software (libx265); 23 is good balance
-    AUDIO_BITRATE = '192k'      # FFmpeg command structure
+    print(f"Download complete: {raw_output_path}")
 
-    # 1. Hardware Detection (Highest Priority)
-    
-    # TrueNAS/Docker with Intel Arc/iGPU passed through
-    if USE_INTEL_QSV == '1' and system_os == 'Linux':
-        
-        print("Detected Intel QSV (Arc). Using hardware H.265 encoding.")
-        command.extend([
-            '-hwaccel', 'qsv',
-            '-i', input_path,
-            '-c:v', 'hevc_qsv',
-            '-q:v', QUALITY_FACTOR, 
-            '-preset', 'fast',
-        ])
-
-    # TrueNAS/Docker with NVIDIA GPU passed through
-    elif USE_NVIDIA_NVENC == '1' and system_os == 'Linux':
-        
-        print("Detected NVIDIA NVENC. Using hardware H.265 encoding.")
-        command.extend([
-            '-i', input_path,
-            '-c:v', 'hevc_nvenc',       # H.265 NVIDIA encoder
-            '-cq:v', QUALITY_FACTOR,    # Quality setting for NVENC
-            '-preset', 'fast',
-        ])
-    
-    # macOS (M-series Apple Silicon)
-    elif system_os == 'Darwin':
-        print("Detected macOS. Using native VideoToolbox for H.265.")
-        command.extend([
-            '-i', input_path,
-            '-c:v', 'hevc_videotoolbox',
-            '-q:v', '70',     # Quality factor for VideoToolbox (higher = better quality)
-            '-realtime', '1', # Maximize encoding speed
-        ])
-    
-    # Windows (Assumes H.265 capable GPU for testing)
-    # Note: True hardware detection on Windows is complex; this is a placeholder.
-    elif system_os == 'Windows':
-        print("Detected Windows. Falling back to libx265 for portability.")
-        command.extend([
-            '-i', input_path,
-            '-c:v', 'libx265', 
-            '-crf', CRF_QUALITY,
-            '-preset', 'medium',
-        ])
-
-    # 2. Software Fallback (Lowest Priority/Generic Linux)
-    else:
-        # Default for any unknown Linux environment without specific passthrough confirmed
-        print("No specific GPU detected. Using CPU (libx265) software encoding.")
-        command.extend([
-            '-i', input_path,
-            '-c:v', 'libx265',
-            '-crf', CRF_QUALITY,
-            '-preset', 'medium', # 'medium' is better than 'fast' for H.265 quality/size
-        ])
-
-    # 3. Common Audio and Output Parameters
-    command.extend([
-        '-c:a', 'aac',
-        '-b:a', AUDIO_BITRATE,
-        output_path
-    ])
-    
-    # --- EXECUTE ---
-    print(f"Executing FFmpeg...")
-    subprocess.run(command, check=True)
-    print(f"Transcoding complete. File saved to: {output_path}")
+    # 5. Return the calculated final path to main.py for renaming/tracking
+    return final_file_path 
