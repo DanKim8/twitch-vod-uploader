@@ -4,10 +4,10 @@ import datetime
 import sys
 
 # Imports from internal modules
-from .state_manager import StateManager
-from .twitch_api import get_access_token, get_channel_info, get_all_new_vods
-from .processing import download_vod, transcode_vod, generate_safe_filename
-# from .youtube_api import upload_video # Keep commented until implemented
+from state_manager import StateManager
+from twitch_api import get_access_token, get_channel_info, get_all_new_vods
+from processing import download_vod, transcode_vod, generate_safe_filename
+from youtube_api import upload_video # Use the new upload function
 
 # --- CONFIGURATION (must update in docker setting in truenas custom app) ---
 #CONFIG_DIR = "/app/config"
@@ -82,16 +82,12 @@ def main():
             raw_file_path = os.path.join(STAGING_DIR, raw_file_name)
             final_file_path = os.path.join(STAGING_DIR, final_file_name)
 
-            # 2. DOWNLOAD, TRANSCODE, UPLOAD, etc.
+            # 2. DOWNLOAD, UPLOAD, etc.
             try:
                 download_vod(vod_id, raw_file_path)
-                transcode_vod(raw_file_path, final_file_path)
-                os.remove(raw_file_path) # Clean up raw file
                 
-                # UPLOAD (Placeholder)
-                # upload_video(final_file_path, vod) 
-                
-                os.remove(final_file_path) # Clean up final file
+                # UPLOAD (Placeholder
+                upload_video(final_file_path, vod) # <--- CALL THE NEW FUNCTION
                 
                 # 3. CRUCIAL: UPDATE STATE AFTER SUCCESS
                 state_manager.update_last_vod_id(vod_id)
