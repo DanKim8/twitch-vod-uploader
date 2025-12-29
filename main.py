@@ -6,7 +6,7 @@ import sys
 # Imports from internal modules
 from state_manager import StateManager
 from twitch_api import get_access_token, get_channel_info, get_all_new_vods
-from processing import download_vod, transcode_vod, generate_safe_filename
+from processing import download_vod, generate_safe_filename, generate_final_filename
 from youtube_api import upload_video # Use the new upload function
 
 # --- CONFIGURATION (must update in docker setting in truenas custom app) ---
@@ -29,8 +29,6 @@ def check_environment():
     for var in required_vars:
         if not os.environ.get(var):
             raise EnvironmentError(f"Missing required environment variable: {var}")
-        else:
-            print(var + ":   " + os.environ.get(var))
 
 def main():
     try:
@@ -71,23 +69,26 @@ def main():
             
             print(f"\nSTARTING VOD: {vod_title} ({vod_id})")
 
-            # --- EXECUTION PIPELINE (Contents of the old IF block) ---
-            
+            # 1. GENERATE CONSISTENT FILENAME AND PATH
+            # We call this once here so download and upload use the SAME string
+            final_filename = generate_final_filename(vod)
+            final_file_path = os.path.join(STAGING_DIR, final_filename) 
+
             # 1. Setup file paths
-            date_prefix = datetime.datetime.fromisoformat(vod['created_at'].replace('Z', '+00:00')).strftime("%Y-%m-%d")
+            #date_prefix = datetime.datetime.fromisoformat(vod['created_at'].replace('Z', '+00:00')).strftime("%Y-%m-%d")
             
-            raw_file_name = f"{vod_id}_raw.mp4"
-            final_file_name = generate_safe_filename(vod, date_prefix)
+            #raw_file_name = f"{vod_id}_raw.mp4"
+            #final_file_name = generate_safe_filename(vod, date_prefix)
             
-            raw_file_path = os.path.join(STAGING_DIR, raw_file_name)
-            final_file_path = os.path.join(STAGING_DIR, final_file_name)
+            #raw_file_path = os.path.join(STAGING_DIR, raw_file_name)
+            #final_file_path = os.path.join(STAGING_DIR, final_file_name)
 
             # 2. DOWNLOAD, UPLOAD, etc.
             try:
-                download_vod(vod_id, raw_file_path)
+                download_vod(vod_id, final_file_path)
                 
                 # UPLOAD (Placeholder
-                upload_video(final_file_path, vod) # <--- CALL THE NEW FUNCTION
+                #upload_video(final_file_path, vod) # <--- CALL THE NEW FUNCTION
                 
                 # 3. CRUCIAL: UPDATE STATE AFTER SUCCESS
                 state_manager.update_last_vod_id(vod_id)

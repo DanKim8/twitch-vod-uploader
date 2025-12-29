@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 class StateManager:
     """Handles reading and updating the state file on the TrueNAS host."""
@@ -8,7 +9,7 @@ class StateManager:
         # Ensure the parent directory for the tracker file exists
         os.makedirs(os.path.dirname(tracker_path), exist_ok=True)
     
-    def get_last_vod_id(self) -> str | None:
+    def get_last_vod_id(self)-> Optional[str]:
         """Reads the ID of the last VOD that was processed."""
         try:
             with open(self.tracker_path, 'r') as f:

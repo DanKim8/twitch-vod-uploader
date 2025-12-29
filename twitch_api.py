@@ -1,6 +1,7 @@
 import requests
 import time
 import os
+from typing import Optional
 
 # Credentials retrieved from Environment Variables (TrueNAS App Config)
 TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")
@@ -40,7 +41,7 @@ def get_channel_info(token: str):
 # Maximum number of VODs to fetch per API page
 VODS_PER_PAGE = 100 
 
-def get_all_new_vods(user_id: str, token: str, last_processed_id: str | None) -> list:
+def get_all_new_vods(user_id: str, token: str, last_processed_id: Optional[str]) -> list:
     """
     Retrieves all VODs for the user until the last_processed_id is found.
     VODs are returned in chronological order (oldest first).
