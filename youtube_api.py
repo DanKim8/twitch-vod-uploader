@@ -59,34 +59,35 @@ def get_authenticated_service():
 # --- MAIN UPLOAD FUNCTION ---
 
 def upload_video(final_file_path: str, vod: dict):
-    """
-    Uploads a video file to YouTube using the stored refresh token.
-    Derives a safe title from the filename to avoid HTTP 400 errors.
-    """
-    
+
+   # Verify the file actually exists before starting Google Auth
+    if not os.path.exists(final_file_path):
+        print(f"❌ Error: The file {final_file_path} was not found on disk.")
+        return 
+
     youtube = get_authenticated_service()
     
     # --- STEP 1: GENERATE A SAFE YOUTUBE TITLE ---
-    # Get the filename (e.g., "2025-12-18_yo_happy_holidays.mp4")
     file_name = os.path.basename(final_file_path)
     
     # Remove extension and replace underscores with spaces
-    # Result: "2025-12-18 yo happy holidays"
     clean_display_title = os.path.splitext(file_name)[0].replace('_', ' ')
     
     # Final safety check: YouTube API hates < and >. 
-    # This regex keeps letters, numbers, spaces, and basic punctuation only.
     video_title = re.sub(r'[^a-zA-Z0-9\s\-\.\!\(\)]', '', clean_display_title).strip()
 
     # Fallback if title becomes empty after cleaning
     if not video_title:
         video_title = f"Twitch VOD Archive {vod.get('id')}"
 
+    # Fetch date from metadata; format: 2025-12-31
+    raw_date = vod.get('createdAt') or vod.get('publishedAt') or ""
+    formatted_date = raw_date.split('T')[0] if raw_date else "Unknown Date"
+
     # Placeholder description
     video_description = (
-        f"Original Title: {vod.get('title')}\n"
-        f"Full stream VOD from our Twitch channel.\n\n"
-        "Link to the original channel here: [CHANNEL LINK]"
+        f"Livestreamed on: {formatted_date}\n"
+        f"Check out twitch.tv/lilypichu for more"
     )
 
     channel_tag = vod.get('owner', {}).get('display_name', 'TwitchStreamer') 
@@ -105,8 +106,8 @@ def upload_video(final_file_path: str, vod: dict):
     }
 
     # --- STEP 3: EXECUTE UPLOAD ---
-    media_body = MediaFileUpload(final_file_path, chunksize=-1, resumable=True)
-    
+    media_body = MediaFileUpload(final_file_path, chunksize=1024*1024, resumable=True)    
+
     print(f"Uploading to YouTube as: '{video_title}'...")
 
     try:

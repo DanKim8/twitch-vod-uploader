@@ -74,21 +74,12 @@ def main():
             final_filename = generate_final_filename(vod)
             final_file_path = os.path.join(STAGING_DIR, final_filename) 
 
-            # 1. Setup file paths
-            #date_prefix = datetime.datetime.fromisoformat(vod['created_at'].replace('Z', '+00:00')).strftime("%Y-%m-%d")
-            
-            #raw_file_name = f"{vod_id}_raw.mp4"
-            #final_file_name = generate_safe_filename(vod, date_prefix)
-            
-            #raw_file_path = os.path.join(STAGING_DIR, raw_file_name)
-            #final_file_path = os.path.join(STAGING_DIR, final_file_name)
-
             # 2. DOWNLOAD, UPLOAD, etc.
             try:
-                download_vod(vod_id, final_file_path)
+                actual_file_name = download_vod(vod_id, final_file_path)
                 
                 # UPLOAD (Placeholder
-                #upload_video(final_file_path, vod) # <--- CALL THE NEW FUNCTION
+                upload_video(actual_file_name, vod) # <--- CALL THE NEW FUNCTION
                 
                 # 3. CRUCIAL: UPDATE STATE AFTER SUCCESS
                 state_manager.update_last_vod_id(vod_id)
@@ -97,14 +88,12 @@ def main():
             except Exception as pipeline_e:
                 print(f"FATAL ERROR processing VOD {vod_id}: {pipeline_e}. Stopping batch.")
                 # If one VOD fails, we stop the whole batch and rely on the next
-                # scheduled run to retry from the last *successfully saved* VOD ID.
                 return 
 
         print("\n--- BATCH PROCESSING COMPLETE ---")
 
     except Exception as e:
         print(f"FATAL AUTOMATION ERROR during pipeline execution: {e}")
-        # Add robust cleanup logic here to remove any partially created files
         sys.exit(1)
 
 if __name__ == "__main__":
