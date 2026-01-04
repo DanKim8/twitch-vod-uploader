@@ -55,6 +55,16 @@ def get_authenticated_service():
     # 3. Build the service
     return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=creds)
 
+def validate_youtube_auth():
+    """Pre-flight check to ensure YouTube service is alive and authenticated."""
+    try:
+        youtube = get_authenticated_service()
+        request = youtube.channels().list(part="snippet", mine=True)
+        response = request.execute()
+        channel_name = response['items'][0]['snippet']['title']
+        return channel_name
+    except Exception as e:
+        raise Exception(f"YouTube Auth Validation Failed: {e}")
 
 # --- MAIN UPLOAD FUNCTION ---
 
@@ -116,14 +126,28 @@ def upload_video(final_file_path: str, vod: dict):
             body=body,
             media_body=media_body
         )
-        
+
         # Resumable upload progress loop
         response = None
+        last_progress = -1  # Initialize tracker 
+        print(f"🚀 starting upload...")
+
         while response is None:
             status, response = insert_request.next_chunk()
             if status:
-                print(f"Upload Progress: {int(status.progress() * 100)}%")
-        
+                current_progress = int(status.progress() * 100) 
+
+                # ONLY print if the percentage has actually changed
+                if current_progress > last_progress:
+                    # Optional: Add a small visual bar
+                    bar = '█' * (current_progress // 5) + '-' * (20 - (current_progress // 5))
+                    
+                    # Print using \r to overwrite the same line
+                    # end='' prevents a new line, flush=True ensures it shows up immediately
+                    print(f"\r📦 Upload Progress: [{bar}] {current_progress}%", end='', flush=True)
+                    
+                    last_progress = current_progress
+
         # 4. Success message
         print(f"✅ Successfully uploaded video! YouTube ID: {response.get('id')}")
         return response.get('id')

@@ -89,7 +89,7 @@ def get_vod_metadata(vod_id: str) -> dict:
 def download_vod(vod_id: str, raw_output_path: str):
 
     download_dir = os.path.dirname(raw_output_path)
-    output_template = os.path.join(download_dir, "{date}_{id}_{title}.{ext}")
+    output_template = os.path.join(download_dir, "{date}_{id}_{title}.mp4")
 
     metadata = get_vod_metadata(vod_id)
     channel_name = metadata.get('owner', {}).get('displayName', 'Unknown')
