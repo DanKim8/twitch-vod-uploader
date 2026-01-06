@@ -7,7 +7,7 @@ import sys
 from state_manager import StateManager
 from twitch_api import get_access_token, get_channel_info, get_all_new_vods
 from processing import download_vod, generate_safe_filename, generate_final_filename
-from youtube_api import upload_video, validate_youtube_auth # Use the new upload function
+from youtube_api import upload_video, get_authenticated_service
 
 # --- CONFIGURATION (must update in docker setting in truenas custom app) ---
 #CONFIG_DIR = "/app/config"
@@ -37,7 +37,7 @@ def main():
         os.makedirs(STAGING_DIR, exist_ok=True)
 
         # Call the validation from our new module
-        yt_channel = validate_youtube_auth()
+        yt_channel = get_authenticated_service()
         print(f"✅ YouTube Authentication: SUCCESS (Account: {yt_channel})")
 
     except Exception as e:

@@ -55,17 +55,6 @@ def get_authenticated_service():
     # 3. Build the service
     return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=creds)
 
-def validate_youtube_auth():
-    """Pre-flight check to ensure YouTube service is alive and authenticated."""
-    try:
-        youtube = get_authenticated_service()
-        request = youtube.channels().list(part="snippet", mine=True)
-        response = request.execute()
-        channel_name = response['items'][0]['snippet']['title']
-        return channel_name
-    except Exception as e:
-        raise Exception(f"YouTube Auth Validation Failed: {e}")
-
 # --- MAIN UPLOAD FUNCTION ---
 
 def upload_video(final_file_path: str, vod: dict):
