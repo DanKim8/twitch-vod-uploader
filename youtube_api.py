@@ -26,12 +26,12 @@ else:
 
 # Ensure the output directory exists
 os.makedirs(VOD_OUTPUT_DIR, exist_ok=True)
-
+"""
+Handles authentication using the token.json file.
+Automatically refreshes the token if it's expired.
+"""
 def get_authenticated_service():
-    """
-    Handles authentication using the token.json file.
-    Automatically refreshes the token if it's expired.
-    """
+
     creds = None
 
     # 1. Load the credentials from the token.json file

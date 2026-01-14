@@ -8,10 +8,7 @@ import glob
 STAGING_DIR = os.environ.get("STAGING_DIR", "/vods")
 
 def generate_final_filename(metadata: dict) -> str:
-    """
-    Creates a consistent, clean filename: YYYY-MM-DD_title.mp4
-    Example: 'yo :> happy holidays :>' -> '2025-12-18_yo_happy_holidays.mp4'
-    """
+
     # 1. Get the Date
     created_date = metadata.get('created_at') or metadata.get('published_at') or ""
     if created_date:
@@ -23,31 +20,23 @@ def generate_final_filename(metadata: dict) -> str:
     # 2. Clean the Title
     title = metadata.get('title', 'Unknown_Title')
     
-    # Step A: Remove all non-alphanumeric characters (keep only letters, numbers, spaces, and hyphens)
+    # Remove all non-alphanumeric characters (keep only letters, numbers, spaces, and hyphens)
     clean = re.sub(r'[^\w\s-]', '', title)
     
-    # Step B: Replace all spaces and existing underscores with a single underscore
+    # Replace all spaces and existing underscores with a single underscore
     clean = re.sub(r'[\s_]+', '_', clean)
     
-    # Step C: Strip any leading/trailing underscores and convert to lowercase
+    # Strip any leading/trailing underscores and convert to lowercase
     clean = clean.strip('_').lower()
     
     return f"{date_str}_{clean}.mp4"
-
-"""Creates the final, structured filename: [YYYY-MM-DD]_safe_title.mp4"""
-def generate_safe_filename(vod_info: dict, date_prefix: str) -> str:
     
-    # Sanitize title by replacing unsafe characters with underscores
-    title = vod_info['title']
-    safe_title = re.sub(r'[^\w\-_\. ]', '_', title).replace(' ', '_')
-    
-    return f"{date_prefix}_{safe_title}.mp4"
-    
+"""
+Fetches the VOD metadata (including creation date and title) 
+using 'twitch-dl info --json'.
+"""
 def get_vod_metadata(vod_id: str) -> dict:
-    """
-    Fetches the VOD metadata (including creation date and title) 
-    using 'twitch-dl info --json'.
-    """
+
     # Command: twitch-dl info [VOD_ID] --json
     info_command = ['twitch-dl', 'info', vod_id, '--json']
     
@@ -65,7 +54,6 @@ def get_vod_metadata(vod_id: str) -> dict:
        # Load the raw JSON
         data = json.loads(result.stdout)
         
-        # --- ROBUST PARSING ---
         # If it's a list, we want the first item
         if isinstance(data, list):
             if len(data) > 0:
