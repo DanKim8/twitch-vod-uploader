@@ -25,8 +25,7 @@ TRACKER_FILE = os.path.join(CONFIG_DIR, "last_vod_id.txt")
 def check_environment():
     """Validates required environment variables."""
     required_vars = [
-        "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_CHANNEL_NAME",
-        "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"
+        "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_CHANNEL_NAME"
     ]
     for var in required_vars:
         if not os.environ.get(var):
