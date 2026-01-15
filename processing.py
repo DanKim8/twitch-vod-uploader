@@ -97,7 +97,7 @@ def download_vod(vod_id: str, raw_output_path: str):
         ]
 
         print(f"📡 Starting Twitch download for VOD {vod_id}...") 
-        result = subprocess.run(command)
+        result = subprocess.run(command, capture_output=True, text=True)
         
         if result.returncode == 0:
             print(f"✅ Download successful at {q}!")
