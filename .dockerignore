@@ -1,0 +1,17 @@
+# Secrets (Most Important)
+token.json
+client_secrets.json
+tracker.json
+
+# Python junk
+__pycache__/
+*.pyc
+.venv/
+
+# Large files
+*.mp4
+*.mkv
+
+# Git
+.git/
+.gitignore
